@@ -62,6 +62,10 @@ ccscaffold/
 }
 ```
 
+### 4. 安装规则
+
+**重要**: 不要将测试文件（test、spec 等）复制到 `.claude` 目录下。仅复制实际可用的组件文件。
+
 ## 开发指南
 
 ### 技能（Skills）
@@ -98,6 +102,48 @@ ccscaffold/
 3. 输出格式化的状态信息
 
 参考: [STATUSLINE_REFERENCE.md](STATUSLINE_REFERENCE.md)
+
+#### CCScaffold Statusline 配置
+
+已配置自定义 statusline 显示:
+- 完整 session_id
+- 实际使用的模型名
+- 带颜色编码的上下文使用百分比
+
+**颜色机制**:
+- 绿色 (< 60%): 上下文使用率低于 60%
+- 黄色 (60-79%): 上下文使用率 60% 到 79%
+- 红色 (>= 80%): 上下文使用率 80% 或更高
+
+**缓存机制**:
+- 使用 session_id 隔离缓存
+- 当 `used_percentage` 无法识别时，保留上次显示的值
+- 缓存文件位于 `/tmp/ccscaffold-statusline-{session_id}.json`
+
+脚本位置: `scripts/ccscaffold-statusline.sh`
+
+**配置方式**:
+
+要启用 statusline，在用户设置 (`~/.claude/settings.json`) 中添加:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "/Users/ming/Work/ccscaffold/scripts/ccscaffold-statusline.sh"
+  }
+}
+```
+
+**测试**:
+
+运行集成测试:
+```bash
+./tests/test-statusline.sh
+```
+
+**参考文档**:
+- [STATUSLINE_REFERENCE.md](STATUSLINE_REFERENCE.md) - Statusline 开发完整参考
 
 ### MCP服务器
 
