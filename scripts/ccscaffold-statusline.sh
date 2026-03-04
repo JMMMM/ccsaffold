@@ -51,3 +51,30 @@ else
     # 有新值时更新缓存
     write_cache "$display_percentage"
 fi
+
+# ANSI 颜色代码
+readonly GREEN="\033[32m"
+readonly YELLOW="\033[33m"
+readonly RED="\033[31m"
+readonly RESET="\033[0m"
+
+# 根据百分比获取颜色
+get_color() {
+    local pct=$1
+    # 如果是 "--" 或非数字，使用默认颜色
+    if ! [[ "$pct" =~ ^[0-9]+$ ]]; then
+        echo ""
+        return
+    fi
+
+    if (( pct < 60 )); then
+        echo "$GREEN"
+    elif (( pct < 80 )); then
+        echo "$YELLOW"
+    else
+        echo "$RED"
+    fi
+}
+
+# 获取颜色
+color=$(get_color "$display_percentage")
