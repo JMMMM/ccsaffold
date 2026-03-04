@@ -1,3 +1,10 @@
 {
-  "hooks": {}
+  "hooks": {},
+  "Notification": [{
+    "matcher": "",
+    "hooks": [{
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/notification-hook.sh"
+    }]
+  }]
 }
