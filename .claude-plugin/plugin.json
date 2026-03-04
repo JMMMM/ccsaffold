@@ -1,0 +1,9 @@
+{
+  "name": "ccscaffold",
+  "version": "0.1.0",
+  "description": "个人AI工具箱 - Claude Code插件开发和测试项目",
+  "author": {
+    "name": "ming"
+  },
+  "keywords": ["toolbox", "development", "testing"]
+}
