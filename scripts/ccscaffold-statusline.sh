@@ -78,3 +78,18 @@ get_color() {
 
 # 获取颜色
 color=$(get_color "$display_percentage")
+
+# 格式化输出
+if [[ -n "$color" ]]; then
+    printf "%s | %s | %sContext: %s%%%s\n" \
+        "$session_id" \
+        "$model_id" \
+        "$color" \
+        "$display_percentage" \
+        "$RESET"
+else
+    printf "%s | %s | Context: %s%%\n" \
+        "$session_id" \
+        "$model_id" \
+        "$display_percentage"
+fi
