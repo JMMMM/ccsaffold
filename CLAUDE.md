@@ -66,6 +66,33 @@ ccscaffold/
 
 **重要**: 不要将测试文件（test、spec 等）复制到 `.claude` 目录下。仅复制实际可用的组件文件。
 
+### 5. 跨平台兼容性
+
+**重要**: 编写脚本时必须考虑跨平台兼容性，确保脚本能在 Windows、macOS 和 Linux 上正常运行。
+
+**通用要求**：
+- 优先使用跨平台的命令和工具
+- 避免使用特定平台的命令（如 macOS 的 `brew`、Windows 的 `choco`）
+- 使用环境变量检测平台：`$OSTYPE` 或 `uname` 命令
+- 提供平台检测和条件分支逻辑
+
+**平台检测示例**：
+```bash
+# 检测操作系统
+case "$OSTYPE" in
+  linux*)   echo "Linux" ;;
+  darwin*)  echo "macOS" ;;
+  msys*|cygwin*|win*) echo "Windows" ;;
+  *)        echo "Unknown: $OSTYPE" ;;
+esac
+```
+
+**常见注意事项**：
+- 路径分隔符：使用 `/` 或 `${PATH_SEPARATOR}` 变量
+- 临时目录：使用 `$TMPDIR` 或 `$TEMP` 环境变量
+- 命令替换：优先使用 `$(command)` 而非反引号
+- 文件操作：使用跨平台的工具或提供平台检测分支
+
 ## 开发指南
 
 ### 技能（Skills）

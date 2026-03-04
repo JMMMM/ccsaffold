@@ -15,7 +15,7 @@ input=$(cat)
 
 # 检查输入是否为空
 if [[ -z "$input" ]]; then
-    echo "unknown-session | unknown | Context: --%"
+    echo "unknown-session | unknown | Context: 0%"
     exit 0
 fi
 
@@ -57,7 +57,7 @@ display_percentage="$used_percentage"
 if [[ -z "$display_percentage" || "$display_percentage" == "null" ]]; then
     display_percentage=$(read_cache)
     if [[ -z "$display_percentage" ]]; then
-        display_percentage="--"
+        display_percentage="0"
     fi
 else
     # 有新值时更新缓存

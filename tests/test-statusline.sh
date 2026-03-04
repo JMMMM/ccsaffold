@@ -43,7 +43,7 @@ test_case "缓存读取" \
 
 test_case "空输入" \
     '' \
-    "unknown-session"
+    "Context: 0%"
 
 # 清理
 rm -f /tmp/ccscaffold-statusline-*.json
