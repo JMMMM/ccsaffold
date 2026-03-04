@@ -53,10 +53,10 @@ else
 fi
 
 # ANSI 颜色代码
-readonly GREEN="\033[32m"
-readonly YELLOW="\033[33m"
-readonly RED="\033[31m"
-readonly RESET="\033[0m"
+readonly GREEN=$'\033[32m'
+readonly YELLOW=$'\033[33m'
+readonly RED=$'\033[31m'
+readonly RESET=$'\033[0m'
 
 # 根据百分比获取颜色
 get_color() {
