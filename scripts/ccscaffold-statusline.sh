@@ -4,8 +4,20 @@
 
 set -euo pipefail
 
+# 检查 jq 是否可用
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required. Install with: brew install jq" >&2
+    exit 1
+fi
+
 # 读取 stdin JSON
 input=$(cat)
+
+# 检查输入是否为空
+if [[ -z "$input" ]]; then
+    echo "unknown-session | unknown | Context: --%"
+    exit 0
+fi
 
 # 提取字段
 session_id=$(echo "$input" | jq -r '.session_id // empty')
