@@ -4,13 +4,20 @@
 
 set -euo pipefail
 
-# 脚本路径
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # 通知标题
 NOTIFY_TITLE="Claude Code"
 
 # 消息映射函数 - 兼容 bash 3.x (macOS 默认)
+#
+# 根据通知类型返回对应的中文消息
+#
+# 参数:
+#   $1 - notification_type: 通知类型 (permission_prompt/idle_prompt/task_complete/task_failed)
+#   $2 - original_message: 原始消息（未知类型时使用）
+#
+# 输出:
+#   返回中文通知消息文本
+#
 get_notification_message() {
     local notification_type="$1"
     local original_message="$2"
@@ -48,6 +55,12 @@ main() {
 
     # 读取 stdin 的 JSON 输入
     input=$(cat)
+
+    # 检查输入是否为空
+    if [[ -z "$input" ]]; then
+        echo "Error: No input provided" >&2
+        exit 0
+    fi
 
     # 解析 notification_type
     notification_type=$(echo "$input" | jq -r '.notification_type // empty' 2>/dev/null || true)
