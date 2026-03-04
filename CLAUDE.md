@@ -118,6 +118,7 @@ ccscaffold/
 **缓存机制**:
 - 使用 session_id 隔离缓存
 - 当 `used_percentage` 无法识别时，保留上次显示的值
+- 无缓存时默认为 `0%`
 - 缓存文件位于 `/tmp/ccscaffold-statusline-{session_id}.json`
 
 脚本位置: `scripts/ccscaffold-statusline.sh`
@@ -171,6 +172,7 @@ claude plugin validate
 - [PLUGIN_REFERENCE.md](PLUGIN_REFERENCE.md) - 本地插件开发参考
 - [HOOKS_REFERENCE.md](HOOKS_REFERENCE.md) - 本地Hooks开发参考
 - [STATUSLINE_REFERENCE.md](STATUSLINE_REFERENCE.md) - 本地Statusline开发参考
+- [notification-hook.md](docs/notification-hook.md) - Notification Hook 技术文档
 
 ## 技能使用
 
