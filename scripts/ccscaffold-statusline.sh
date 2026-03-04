@@ -19,3 +19,35 @@ fi
 
 # 输出调试信息 (测试时)
 # echo "Session: $session_id, Model: $model_id, Percentage: $used_percentage" >&2
+
+# 缓存配置
+CACHE_DIR="/tmp"
+CACHE_FILE="${CACHE_DIR}/ccscaffold-statusline-${session_id}.json"
+
+# 从缓存读取旧值
+read_cache() {
+    if [[ -f "$CACHE_FILE" ]]; then
+        jq -r '.last_percentage // empty' "$CACHE_FILE" 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# 写入缓存
+write_cache() {
+    local percentage=$1
+    local timestamp=$(date +%s)
+    echo "{\"last_percentage\": $percentage, \"timestamp\": $timestamp}" > "$CACHE_FILE"
+}
+
+# 确定要显示的百分比
+display_percentage="$used_percentage"
+if [[ -z "$display_percentage" || "$display_percentage" == "null" ]]; then
+    display_percentage=$(read_cache)
+    if [[ -z "$display_percentage" ]]; then
+        display_percentage="--"
+    fi
+else
+    # 有新值时更新缓存
+    write_cache "$display_percentage"
+fi
