@@ -1,5 +1,9 @@
 # Notification Hook 技术文档
 
+**日期**: 2025-03-04
+**项目**: CCScaffold 个人AI工具箱
+**版本**: 1.0
+
 ## 概述
 
 Notification Hook 用于监听 Claude Code 的 Notification 事件，并通过 macOS 的 `terminal-notifier` 显示中文系统通知。
@@ -86,6 +90,14 @@ brew install terminal-notifier
 which terminal-notifier
 ```
 
+### macOS 通知权限
+
+确保终端应用具有发送通知的权限:
+
+1. 打开"系统偏好设置" > "通知"
+2. 找到您的终端应用（Terminal、iTerm2 等）
+3. 确保"允许通知"已开启
+
 ## 调试指南
 
 ### 手动测试
@@ -118,6 +130,22 @@ claude --debug
 ```
 
 查看 Hook 触发日志。
+
+### 故障排除流程
+
+```
+通知未显示?
+├── terminal-notifier 已安装?
+│   ├── 否 → 运行 `brew install terminal-notifier`
+│   └── 是 → 继续检查
+├── 脚本可执行?
+│   ├── 否 → 运行 `chmod +x scripts/notification-hook.sh`
+│   └── 是 → 继续检查
+├── Hook 配置正确?
+│   └── 运行 `jq '.Notification' hooks/hooks.json` 验证
+└── macOS 通知权限已启用?
+    └── 检查系统偏好设置 > 通知
+```
 
 ## 参考
 
