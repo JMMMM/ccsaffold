@@ -467,7 +467,7 @@ git commit -m "test: add integration tests for statusline"
 {
   "statusLine": {
     "type": "command",
-    "command": "/Users/ming/Work/ccscaffold/scripts/ccscaffold-statusline.sh"
+    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ccscaffold-statusline.sh"
   }
 }
 ```
@@ -513,7 +513,7 @@ SCRIPT_PATH="$(pwd)/scripts/ccscaffold-statusline.sh"
   ...
   "statusLine": {
     "type": "command",
-    "command": "/Users/ming/Work/ccscaffold/scripts/ccscaffold-statusline.sh"
+    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ccscaffold-statusline.sh"
   }
 }
 ```

@@ -171,7 +171,7 @@ esac
 {
   "statusLine": {
     "type": "command",
-    "command": "/Users/ming/Work/ccscaffold/scripts/ccscaffold-statusline.sh"
+    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ccscaffold-statusline.sh"
   }
 }
 ```

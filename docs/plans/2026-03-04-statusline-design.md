@@ -148,7 +148,7 @@ cfd98e73-fc87-4c10-a398-8991d72a1fa7 | glm-4.7 | \033[31mContext: 85%\033[0m
 {
   "statusLine": {
     "type": "command",
-    "command": "/Users/ming/Work/ccscaffold/scripts/ccscaffold-statusline.sh"
+    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ccscaffold-statusline.sh"
   }
 }
 ```
