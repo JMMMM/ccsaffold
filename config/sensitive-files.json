@@ -1,0 +1,24 @@
+{
+  "description": "敏感文件保护配置 - 定义禁止 AI 访问的文件类型",
+  "protectedExtensions": [
+    ".env",
+    ".properties",
+    ".yml",
+    ".yaml",
+    ".pem",
+    ".key",
+    ".p12",
+    ".pfx",
+    ".jks",
+    ".keystore"
+  ],
+  "protectedPatterns": [
+    "*credentials*.json",
+    "*secret*.json",
+    "*password*.*",
+    "*token*.json",
+    ".env.*",
+    "secrets/*"
+  ],
+  "blockMessage": "禁止访问敏感文件：{{file_path}}。此类文件包含隐私或安全信息，不允许 AI 读取或修改。"
+}
