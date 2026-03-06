@@ -1,29 +1,20 @@
 ---
 name: session-management
-description: 会话记录管理，支持总结、搜索、加载和智能恢复
+description: 会话记录管理，支持总结、搜索、加载、智能恢复和云端同步
 triggers:
   - /load
   - /search
   - /summarize
-  - 最近修改
-  - 最近新增
-  - 最近开发
+  - /push
+  - /pull
+  - 最近
   - 上次
-  - 历史记录
+  - 之前
   - 历史
-  - 之前的
-  - 之前做的
-  - 恢复上下文
-  - 上下文恢复
-  - 翻阅历史
-  - 查看历史
-  - 历史会话
-  - 之前会话
-  - 上次会话
   - 回顾
   - 总结
-  - 会话恢复
-  - 智能恢复
+  - 恢复上下文
+  - 云端同步
 ---
 
 # Session Management - 会话记录管理
@@ -93,6 +84,37 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/session-search.js <keyword> --top <n>
 node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID}
 ```
 
+### /push [message]
+
+加密会话记录并推送到云端 Git 仓库。
+
+**用法示例：**
+- `/push` - 推送会话记录
+- `/push 添加今天的会话` - 指定提交信息
+
+**环境变量：**
+- `SESSION_ENCRYPT_PASSWORD`: 加密密码（可选，未设置时提示输入）
+
+**执行：**
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js push <message>
+```
+
+### /pull
+
+从云端拉取并解密会话记录。
+
+**用法示例：**
+- `/pull` - 拉取会话记录
+
+**环境变量：**
+- `SESSION_ENCRYPT_PASSWORD`: 加密密码（可选，未设置时提示输入）
+
+**执行：**
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js pull
+```
+
 ## 工作流程
 
 1. **会话结束**：自动后台生成总结（异步）
@@ -100,9 +122,20 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID}
 3. **需要恢复上下文**：使用 `/load` 加载最近会话
 4. **查找历史修改**：使用 `/search` 搜索关键词
 5. **压缩前准备**：使用 `/summarize` 生成总结，然后新会话可智能恢复
+6. **云端备份**：使用 `/push` 加密并推送到云端 Git 仓库
+7. **跨设备同步**：使用 `/pull` 从云端拉取并解密会话记录
 
 ## 文件位置
 
 - 总结文件：`.session-history/{session_id}.md`
+- 加密文件：`.session-history/{session_id}.enc`（用于云端同步）
 - 待处理队列：`.session-history/pending.json`
 - 原始数据：`~/.claude/projects/{project}/{session_id}.jsonl`
+
+## 云端同步
+
+会话记录可以通过 Git 安全地同步到云端：
+
+- **加密**：使用 AES-256-GCM 算法，密码通过 PBKDF2 派生密钥
+- **安全**：明文文件 (.md) 不会被提交，只有加密文件 (.enc) 会上传
+- **便捷**：通过环境变量 `SESSION_ENCRYPT_PASSWORD` 可避免每次输入密码
