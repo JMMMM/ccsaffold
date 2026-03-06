@@ -53,6 +53,7 @@ yarn.lock
 .cache/
 *.cache
 
-# Session history (local only)
+# Session history (加密同步)
 .session-history/*.md
 .session-history/pending.json
+!.session-history/*.enc
