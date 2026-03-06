@@ -1,4 +1,5 @@
 ---
+name: search
 description: "搜索会话历史，返回最匹配的结果。用法: /search <keyword> [--top <n>]"
 ---
 
@@ -9,7 +10,7 @@ description: "搜索会话历史，返回最匹配的结果。用法: /search <k
 ## 用法
 
 ```bash
-node E:/ccsaffold/scripts/session-search.js <keyword> [--top <n>]
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-search.js <keyword> [--top <n>]
 ```
 
 ## 参数

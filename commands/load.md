@@ -1,4 +1,5 @@
 ---
+name: load
 description: "加载最近 x 次会话总结，帮助恢复上下文。用法: /load [count] [--headers-only]"
 ---
 
@@ -7,7 +8,7 @@ description: "加载最近 x 次会话总结，帮助恢复上下文。用法: /
 请执行以下命令来加载会话历史：
 
 ```bash
-node E:/ccsaffold/scripts/session-load.js <count> [--headers-only]
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-load.js <count> [--headers-only]
 ```
 
 ## 参数说明

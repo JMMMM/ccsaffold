@@ -1,4 +1,5 @@
 ---
+name: summarize
 description: "手动生成或更新当前会话的总结"
 ---
 
@@ -9,7 +10,7 @@ description: "手动生成或更新当前会话的总结"
 ## 用法
 
 ```bash
-node E:/ccsaffold/scripts/session-summarize.js ${SESSION_ID}
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID}
 ```
 
 ## 功能
