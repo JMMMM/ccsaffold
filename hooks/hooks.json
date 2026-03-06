@@ -1,5 +1,20 @@
 {
-  "hooks": {},
+  "hooks": {
+    "SessionEnd": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID} &"
+      }]
+    }],
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js --process-pending"
+      }]
+    }]
+  },
   "Notification": [{
     "matcher": "",
     "hooks": [{
