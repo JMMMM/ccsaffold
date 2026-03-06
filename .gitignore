@@ -52,3 +52,7 @@ yarn.lock
 # 缓存文件
 .cache/
 *.cache
+
+# Session history (local only)
+.session-history/*.md
+.session-history/pending.json
