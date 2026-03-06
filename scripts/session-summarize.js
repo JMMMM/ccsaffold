@@ -16,10 +16,40 @@ const CLAUDE_DIR = process.env.CLAUDE_DIR || path.join(process.env.HOME || proce
 const HISTORY_DIR = path.join(process.cwd(), '.session-history');
 const PENDING_FILE = path.join(HISTORY_DIR, 'pending.json');
 
+// 最小问题长度（过滤短选项如 A/B/C）
+const MIN_QUESTION_LENGTH = 10;
+
 // 解析命令行参数
 const args = process.argv.slice(2);
 const sessionId = args.find(arg => !arg.startsWith('--'));
 const processPending = args.includes('--process-pending');
+
+/**
+ * 检查是否为有效的用户问题（非短选项）
+ * @param {string} content - 用户输入内容
+ * @returns {boolean} 是否有效
+ */
+function isValidQuestion(content) {
+  if (!content || typeof content !== 'string') return false;
+
+  // 过滤包含 command 标签的内容
+  if (content.includes('<command-name>') || content.includes('<command-message>')) {
+    return false;
+  }
+
+  // 过滤过短的输入（如 A/B/C 选项）
+  if (content.trim().length < MIN_QUESTION_LENGTH) {
+    return false;
+  }
+
+  // 过滤纯数字或单字符
+  const trimmed = content.trim();
+  if (/^[A-Za-z0-9]$/.test(trimmed)) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * 解析 jsonl 文件，提取核心内容
@@ -43,10 +73,10 @@ async function parseJsonl(jsonlPath) {
     try {
       const record = JSON.parse(line);
 
-      // 提取用户问题
+      // 提取用户问题（过滤短选项）
       if (record.type === 'user' && !record.isMeta) {
         const content = record.message?.content;
-        if (typeof content === 'string' && !content.includes('<command-name>')) {
+        if (isValidQuestion(content)) {
           userQuestions.push(content);
         }
       }
@@ -82,16 +112,17 @@ async function parseJsonl(jsonlPath) {
 function generateFrontmatter(data) {
   const { sessionId, userQuestions, modifiedFiles } = data;
 
-  // 从用户问题提取关键词（简单实现：取前5个单词）
+  // 从用户问题提取关键词（取第一个有意义问题的前5个词）
   const keywords = [];
-  if (userQuestions.length > 0) {
-    const words = userQuestions[0].match(/[\u4e00-\u9fa5]+|[a-zA-Z]+/g) || [];
+  const firstValidQuestion = userQuestions.find(q => q.length >= MIN_QUESTION_LENGTH);
+  if (firstValidQuestion) {
+    const words = firstValidQuestion.match(/[\u4e00-\u9fa5]+|[a-zA-Z]+/g) || [];
     keywords.push(...words.slice(0, 5).map(w => w.toLowerCase()));
   }
 
-  // 生成简短摘要（取第一个用户问题的前50字）
-  const summary = userQuestions.length > 0
-    ? userQuestions[0].substring(0, 50) + (userQuestions[0].length > 50 ? '...' : '')
+  // 生成简短摘要（取第一个有意义问题的前50字）
+  const summary = firstValidQuestion
+    ? firstValidQuestion.substring(0, 50) + (firstValidQuestion.length > 50 ? '...' : '')
     : '无摘要';
 
   return `---
