@@ -13,13 +13,19 @@
         "type": "command",
         "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js --process-pending"
       }]
+    }, {
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-check-recent.js"
+      }]
+    }],
+    "Notification": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/notification-hook.sh"
+      }]
     }]
-  },
-  "Notification": [{
-    "matcher": "",
-    "hooks": [{
-      "type": "command",
-      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/notification-hook.sh"
-    }]
-  }]
+  }
 }
