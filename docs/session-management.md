@@ -1,15 +1,17 @@
-# Session History - 会话历史记录功能
+# Session Management - 会话记录管理功能
 
-> 版本: 1.0.0
+> 版本: 2.0.0
 > 创建时间: 2026-03-06
+> 更新时间: 2026-03-06
 
 ## 概述
 
-Session History 是一个 Claude Code 插件功能，用于自动记录和管理会话历史。它可以帮助你：
+Session Management 是一个 Claude Code 插件功能，用于自动记录和管理会话历史。它可以帮助你：
 
 - **快速恢复上下文**：加载最近几次会话的总结
 - **搜索历史修改**：通过关键词查找相关的历史会话
 - **自动记录**：每次会话结束时自动生成总结
+- **智能恢复**：新会话启动时自动检测并提示加载最近的总结
 
 ## 安装
 
@@ -20,7 +22,7 @@ Session History 是一个 Claude Code 插件功能，用于自动记录和管理
 ```json
 {
   "skills": [
-    "${CLAUDE_PLUGIN_ROOT}/skills/session-history"
+    "${CLAUDE_PLUGIN_ROOT}/skills/session-management"
   ],
   "hooks": {
     "SessionEnd": [{
@@ -36,6 +38,12 @@ Session History 是一个 Claude Code 插件功能，用于自动记录和管理
         "type": "command",
         "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js --process-pending"
       }]
+    }, {
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-check-recent.js"
+      }]
     }]
   }
 }
@@ -44,6 +52,28 @@ Session History 是一个 Claude Code 插件功能，用于自动记录和管理
 ### 方式二：项目级别生效
 
 将配置添加到项目的 `.claude/settings.json`。
+
+## 智能恢复
+
+### 工作原理
+
+新会话启动时，SessionStart hook 会自动检测最近 5 分钟内生成的会话总结。如果检测到，会显示提示：
+
+```
+========================================
+检测到最近的会话总结 (2分钟前):
+  会话ID: abc123
+  摘要: 修复了登录页面的bug...
+
+是否加载？执行: /load abc123
+========================================
+```
+
+### 使用场景
+
+1. **压缩前准备**：执行 `/summarize` 生成当前会话总结
+2. **启动新会话**：自动检测并提示加载
+3. **快速恢复**：使用 `/load {session_id}` 加载总结
 
 ## 命令
 
@@ -56,6 +86,7 @@ Session History 是一个 Claude Code 插件功能，用于自动记录和管理
 /load           # 加载最近 5 次会话
 /load 10        # 加载最近 10 次会话
 /load 3 --headers-only  # 仅加载表头（快速预览）
+/load abc123    # 加载指定会话ID的总结
 ```
 
 ### /search <keyword>
@@ -70,7 +101,7 @@ Session History 是一个 Claude Code 插件功能，用于自动记录和管理
 
 ### /summarize
 
-手动生成或更新当前会话的总结。
+手动生成或更新当前会话的总结。建议在执行 `/compact` 之前使用。
 
 **用法示例：**
 ```
@@ -129,6 +160,7 @@ LLM 回答详细内容...
 会话开始时自动：
 1. 检查待处理队列
 2. 补充处理失败的会话总结
+3. 检测最近 5 分钟内的总结并提示用户
 
 ## 提取规则
 
@@ -155,6 +187,7 @@ LLM 回答详细内容...
 | 默认加载数量 | 5 | `/load` 不带参数时的数量 |
 | 搜索返回数量 | 5 | `/search` 默认返回数量 |
 | 最小问题长度 | 10字符 | 过滤短于该长度的用户输入 |
+| 智能恢复窗口 | 5分钟 | 检测最近总结的时间窗口 |
 
 ## 注意事项
 
@@ -176,7 +209,18 @@ LLM 回答详细内容...
 1. 确认 `.session-history/` 目录下有 `.md` 文件
 2. 检查 YAML 表头是否正确格式
 
+### 智能恢复未触发
+
+1. 确认最近 5 分钟内执行过 `/summarize`
+2. 检查 SessionStart hook 是否正确配置
+
 ## 版本历史
+
+### v2.0.0 (2026-03-06)
+
+- 重命名为 session-management
+- 新增智能恢复功能（SessionStart 检测最近总结）
+- 新增 session-check-recent.js 脚本
 
 ### v1.0.0 (2026-03-06)
 

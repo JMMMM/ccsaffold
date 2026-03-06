@@ -1,11 +1,11 @@
 {
   "name": "ccscaffold",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "个人AI工具箱 - Claude Code插件开发和测试项目",
   "author": {
     "name": "ming"
   },
-  "keywords": ["toolbox", "development", "testing", "session-history"],
+  "keywords": ["toolbox", "development", "testing", "session-management"],
   "commands": "./commands",
   "skills": "./skills",
   "hooks": "./hooks/hooks.json"
