@@ -25,15 +25,51 @@ const sessionId = args.find(arg => !arg.startsWith('--'));
 const processPending = args.includes('--process-pending');
 
 /**
+ * 从用户消息内容中提取文本
+ * 支持: 字符串格式、数组格式、command-args 标签
+ */
+function extractTextFromContent(content) {
+  if (!content) return null;
+
+  // 字符串格式
+  if (typeof content === 'string') {
+    // 如果包含 command-args 标签，提取其中的内容作为真正的问题
+    if (content.includes('<command-args>')) {
+      const match = content.match(/<command-args>([\s\S]*?)<\/command-args>/);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    return content;
+  }
+
+  // 数组格式 [{"type": "text", "text": "..."}]
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (block.type === 'text' && typeof block.text === 'string') {
+        // 同样处理 command-args
+        if (block.text.includes('<command-args>')) {
+          const match = block.text.match(/<command-args>([\s\S]*?)<\/command-args>/);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+        }
+        return block.text;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * 检查是否为有效的用户问题（非短选项）
- * @param {string} content - 用户输入内容
- * @returns {boolean} 是否有效
  */
 function isValidQuestion(content) {
   if (!content || typeof content !== 'string') return false;
 
-  // 过滤包含 command 标签的内容
-  if (content.includes('<command-name>') || content.includes('<command-message>')) {
+  // 过滤 skill 加载内容（通常是文档）
+  if (content.includes('# Brainstorming') || content.includes('## Overview')) {
     return false;
   }
 
@@ -53,8 +89,6 @@ function isValidQuestion(content) {
 
 /**
  * 解析 jsonl 文件，提取核心内容
- * @param {string} jsonlPath - jsonl 文件路径
- * @returns {Object} 提取的内容
  */
 async function parseJsonl(jsonlPath) {
   const userQuestions = [];
@@ -73,26 +107,30 @@ async function parseJsonl(jsonlPath) {
     try {
       const record = JSON.parse(line);
 
-      // 提取用户问题（过滤短选项）
+      // 提取用户问题
       if (record.type === 'user' && !record.isMeta) {
-        const content = record.message?.content;
+        const rawContent = record.message?.content;
+        const content = extractTextFromContent(rawContent);
         if (isValidQuestion(content)) {
           userQuestions.push(content);
         }
       }
 
-      // 提取 LLM 文本回答
+      // 提取 LLM 文本回答和修改文件
       if (record.type === 'assistant' && record.message?.content) {
-        for (const block of record.message.content) {
-          if (block.type === 'text') {
-            llmResponses.push(block.text);
-          }
-          // 提取修改文件
-          if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'Write')) {
-            modifiedFiles.push({
-              path: block.input?.file_path,
-              action: block.name.toLowerCase()
-            });
+        const content = record.message.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'text') {
+              llmResponses.push(block.text);
+            }
+            // 提取修改文件 (Edit/Write 工具调用)
+            if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'Write')) {
+              modifiedFiles.push({
+                path: block.input?.file_path,
+                action: block.name.toLowerCase()
+              });
+            }
           }
         }
       }
@@ -106,13 +144,11 @@ async function parseJsonl(jsonlPath) {
 
 /**
  * 生成 YAML frontmatter
- * @param {Object} data - 会话数据
- * @returns {string} YAML 格式的 frontmatter
  */
 function generateFrontmatter(data) {
   const { sessionId, userQuestions, modifiedFiles } = data;
 
-  // 从用户问题提取关键词（取第一个有意义问题的前5个词）
+  // 从用户问题提取关键词
   const keywords = [];
   const firstValidQuestion = userQuestions.find(q => q.length >= MIN_QUESTION_LENGTH);
   if (firstValidQuestion) {
@@ -120,44 +156,43 @@ function generateFrontmatter(data) {
     keywords.push(...words.slice(0, 5).map(w => w.toLowerCase()));
   }
 
-  // 生成简短摘要（取第一个有意义问题的前50字）
+  // 生成简短摘要
   const summary = firstValidQuestion
     ? firstValidQuestion.substring(0, 50) + (firstValidQuestion.length > 50 ? '...' : '')
     : '无摘要';
 
-  return `---
-session_id: ${sessionId}
-date: ${new Date().toISOString()}
-project: ${path.basename(process.cwd())}
-summary: "${summary.replace(/"/g, '\\"')}"
-keywords: ${JSON.stringify(keywords)}
-user_questions:
-${userQuestions.map(q => `  - "${q.substring(0, 200).replace(/"/g, '\\"')}${q.length > 200 ? '...' : ''}"`).join('\n')}
-modified_files:
-${modifiedFiles.map(f => `  - path: ${f.path}\n    action: ${f.action}`).join('\n')}
-completion_status: completed
----`;
+  let frontmatter = '---\n';
+  frontmatter += 'session_id: ' + sessionId + '\n';
+  frontmatter += 'date: ' + new Date().toISOString() + '\n';
+  frontmatter += 'project: ' + path.basename(process.cwd()) + '\n';
+  frontmatter += 'summary: "' + summary.replace(/"/g, '\\"') + '"\n';
+  frontmatter += 'keywords: ' + JSON.stringify(keywords) + '\n';
+  frontmatter += 'user_questions:\n';
+  frontmatter += userQuestions.map(q => '  - "' + q.substring(0, 200).replace(/"/g, '\\"') + (q.length > 200 ? '...' : '') + '"').join('\n') + '\n';
+  frontmatter += 'modified_files:\n';
+  frontmatter += modifiedFiles.map(f => '  - path: ' + f.path + '\n    action: ' + f.action).join('\n') + '\n';
+  frontmatter += 'completion_status: completed\n';
+  frontmatter += '---';
+
+  return frontmatter;
 }
 
 /**
- * 处理单个会话，生成总结文件
- * @param {string} sessionId - 会话 ID
+ * 处理单个会话
  */
 async function processSession(sessionId) {
   // 查找 jsonl 文件
   const projectsDir = path.join(CLAUDE_DIR, 'projects');
   let jsonlPath = null;
 
-  // 检查 projects 目录是否存在
   if (!fs.existsSync(projectsDir)) {
-    console.error(`找不到 projects 目录: ${projectsDir}`);
+    console.error('找不到 projects 目录: ' + projectsDir);
     return false;
   }
 
-  // 遍历项目目录查找 session_id.jsonl
   const projectDirs = fs.readdirSync(projectsDir);
   for (const projectDir of projectDirs) {
-    const candidatePath = path.join(projectsDir, projectDir, `${sessionId}.jsonl`);
+    const candidatePath = path.join(projectsDir, projectDir, sessionId + '.jsonl');
     if (fs.existsSync(candidatePath)) {
       jsonlPath = candidatePath;
       break;
@@ -165,35 +200,25 @@ async function processSession(sessionId) {
   }
 
   if (!jsonlPath) {
-    console.error(`找不到会话 ${sessionId} 的 jsonl 文件`);
+    console.error('找不到会话 ' + sessionId + ' 的 jsonl 文件');
     return false;
   }
 
-  console.log(`处理会话: ${sessionId}`);
-  console.log(`jsonl 文件: ${jsonlPath}`);
+  console.log('处理会话: ' + sessionId);
+  console.log('jsonl 文件: ' + jsonlPath);
 
-  // 解析 jsonl
   const { userQuestions, llmResponses, modifiedFiles } = await parseJsonl(jsonlPath);
 
-  console.log(`  - 用户问题数: ${userQuestions.length}`);
-  console.log(`  - LLM 回答数: ${llmResponses.length}`);
-  console.log(`  - 修改文件数: ${modifiedFiles.length}`);
+  console.log('  - 用户问题数: ' + userQuestions.length);
+  console.log('  - LLM 回答数: ' + llmResponses.length);
+  console.log('  - 修改文件数: ' + modifiedFiles.length);
 
-  // 生成总结内容
   const frontmatter = generateFrontmatter({ sessionId, userQuestions, modifiedFiles });
-  const content = `${frontmatter}
+  const content = frontmatter + '\n\n## 用户提问\n\n' + userQuestions.join('\n\n') + '\n\n## LLM 回答\n\n' + llmResponses.join('\n\n') + '\n';
 
-## 用户提问
-${userQuestions.map(q => q).join('\n\n')}
-
-## LLM 回答
-${llmResponses.map(r => r).join('\n\n')}
-`;
-
-  // 写入总结文件
-  const outputPath = path.join(HISTORY_DIR, `${sessionId}.md`);
+  const outputPath = path.join(HISTORY_DIR, sessionId + '.md');
   fs.writeFileSync(outputPath, content, 'utf-8');
-  console.log(`总结已保存: ${outputPath}`);
+  console.log('总结已保存: ' + outputPath);
 
   return true;
 }
@@ -214,28 +239,26 @@ async function processPendingQueue() {
     return;
   }
 
-  console.log(`发现 ${pending.pending.length} 个待处理会话`);
+  console.log('发现 ' + pending.pending.length + ' 个待处理会话');
   const stillPending = [];
 
   for (const item of pending.pending) {
-    console.log(`\n--- 处理会话: ${item.session_id} ---`);
+    console.log('\n--- 处理会话: ' + item.session_id + ' ---');
     const success = await processSession(item.session_id);
     if (!success) {
-      console.log(`会话 ${item.session_id} 处理失败，保留在队列中`);
+      console.log('会话 ' + item.session_id + ' 处理失败，保留在队列中');
       stillPending.push(item);
     }
   }
 
-  // 更新 pending.json
   fs.writeFileSync(PENDING_FILE, JSON.stringify({ pending: stillPending }, null, 2));
-  console.log(`\n处理完成，剩余待处理: ${stillPending.length}`);
+  console.log('\n处理完成，剩余待处理: ' + stillPending.length);
 }
 
 /**
  * 添加会话到待处理队列
  */
 function addToPending(sessionId) {
-  // 确保目录存在
   if (!fs.existsSync(HISTORY_DIR)) {
     fs.mkdirSync(HISTORY_DIR, { recursive: true });
   }
@@ -245,9 +268,8 @@ function addToPending(sessionId) {
     pending = JSON.parse(fs.readFileSync(PENDING_FILE, 'utf-8'));
   }
 
-  // 检查是否已存在
   if (pending.pending.some(item => item.session_id === sessionId)) {
-    console.log(`会话 ${sessionId} 已在待处理队列中`);
+    console.log('会话 ' + sessionId + ' 已在待处理队列中');
     return;
   }
 
@@ -256,12 +278,11 @@ function addToPending(sessionId) {
     timestamp: new Date().toISOString()
   });
   fs.writeFileSync(PENDING_FILE, JSON.stringify(pending, null, 2));
-  console.log(`已添加会话 ${sessionId} 到待处理队列`);
+  console.log('已添加会话 ' + sessionId + ' 到待处理队列');
 }
 
 // 主入口
 async function main() {
-  // 确保目录存在
   if (!fs.existsSync(HISTORY_DIR)) {
     fs.mkdirSync(HISTORY_DIR, { recursive: true });
   }
@@ -276,7 +297,6 @@ async function main() {
     console.log('用法:');
     console.log('  node session-summarize.js <session_id>           # 处理单个会话');
     console.log('  node session-summarize.js --process-pending      # 处理待处理队列');
-    console.log('  node session-summarize.js --add <session_id>     # 添加会话到待处理队列');
     process.exit(1);
   }
 }
