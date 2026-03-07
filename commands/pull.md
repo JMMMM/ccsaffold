@@ -8,7 +8,7 @@ description: "从云端拉取并解密会话记录。用法: /pull"
 请执行以下命令来拉取并解密会话记录：
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js pull
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.sh pull
 ```
 
 ## 环境变量

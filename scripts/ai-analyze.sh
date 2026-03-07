@@ -44,11 +44,22 @@ DATE=$(parse_json "date")
 PROJECT=$(parse_json "project")
 HISTORY_DIR=$(parse_json "history_dir")
 PROMPT=$(parse_json "prompt")
+SKIP_AI_ANALYSIS=$(parse_json "skip_ai_analysis")
+SKIP_REASON=$(parse_json "reason")
 
 log "Session ID: $SESSION_ID"
 log "Date: $DATE"
 log "Project: $PROJECT"
 log "History Dir: $HISTORY_DIR"
+
+# 检查是否需要跳过 AI 分析
+if [ "$SKIP_AI_ANALYSIS" = "true" ]; then
+    log "Skipping AI analysis: $SKIP_REASON"
+    # 清理并退出
+    rm -f "$HISTORY_DIR/.prompt-${SESSION_ID}.txt" 2>/dev/null || true
+    log "=== AI Analysis Skipped ==="
+    exit 0
+fi
 
 # 如果 date 是 UTC 格式，转换为东八区
 if [ -n "$DATE" ] && echo "$DATE" | grep -q "Z$"; then

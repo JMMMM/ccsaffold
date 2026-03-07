@@ -22,8 +22,6 @@
 
 ## 项目概述
 
-## 项目概述
-
 这是一个用于开发和测试Claude Code插件的项目。所有新建组件（commands、agents、skills、hooks）优先在本项目开发，开发完成后询问用户组件的生效范围：
 
 - **本项目生效**: 组件仅在此项目中可用
@@ -125,6 +123,28 @@ esac
 - 临时目录：使用 `$TMPDIR` 或 `$TEMP` 环境变量
 - 命令替换：优先使用 `$(command)` 而非反引号
 - 文件操作：使用跨平台的工具或提供平台检测分支
+
+### 7. Node.js 调用外部命令的限制
+
+**重要**: 在 Node.js 中调用 claude 命令（或其他 AI 命令行工具）时可能出现兼容性问题。
+
+**问题说明**：
+- Node.js 的 `spawn` 或 `exec` 在调用 claude 命令时可能遇到输出缓冲、编码等问题
+- 复杂的交互式命令在 Node.js 环境中可能无法正常工作
+
+**解决方案**：
+- 优先使用 Shell 脚本（`.sh`）调用 claude 命令
+- Shell 脚本直接使用系统调用，兼容性更好
+- 如需使用 Node.js，考虑使用子进程的文件描述符传递方式
+
+**示例**：
+```bash
+# 推荐：使用 Shell 脚本
+result=$(claude -p glm-4.5-air "$prompt")
+
+# 避免：Node.js spawn
+const claude = spawn('claude', ['-p', 'glm-4.5-air', prompt]);
+```
 
 ## 开发指南
 
@@ -233,6 +253,67 @@ claude plugin validate
 - [HOOKS_REFERENCE.md](HOOKS_REFERENCE.md) - 本地Hooks开发参考
 - [STATUSLINE_REFERENCE.md](STATUSLINE_REFERENCE.md) - 本地Statusline开发参考
 - [notification-hook.md](docs/notification-hook.md) - Notification Hook 技术文档
+
+## 会话历史经验总结
+
+根据 `.session-history/` 目录下的会话记录分析，总结出以下开发经验：
+
+### 1. 核心开发经验
+
+**项目配置与规范**
+- 在 CLAUDE.md 中明确配置：模型识别（每次对话末尾声明实际模型）、语言要求（必须使用中文）、操作系统说明
+- 使用 `${CLAUDE_PLUGIN_ROOT}` 环境变量引用插件内部路径，确保跨平台兼容性
+
+**功能设计方法论**
+- 使用 brainstorming skill 先探索需求，确认设计方案后再实现
+- 提供多种方案供用户选择（如方案A/B/C），并说明各自的优缺点
+- 面向跨平台设计，优先考虑 Windows/macOS/Linux 兼容性
+
+### 2. 技术实现经验
+
+**Session History 功能实现**
+- 使用 Node.js 脚本处理 JSON 数据比 Bash 更方便
+- 异步处理：SessionEnd 后台生成总结，避免阻塞用户
+- 精简提取策略：只保留用户提问、LLM回答、修改文件记录，过滤 tool_use/thinking/progress 等过程数据
+
+**CLI 命令调用**
+- Claude Code 不允许嵌套调用 `claude -p` 命令
+- 使用管道方式：`node session-summarize.js | bash ai-analyze.sh`
+- 使用 `--dangerously-skip-permissions --no-session-persistence --disable-slash-commands` 避免触发钩子
+
+**调试技巧**
+- 添加详细日志，输出执行步骤和中间结果
+- 使用超时机制避免脚本卡死
+- 从 JSON 格式改为纯文本提取，简化解析逻辑
+
+### 3. 问题解决经验
+
+**脚本卡死问题**
+- Node.js 调用 claude 命令可能遇到输出缓冲、编码问题
+- 解决方案：优先使用 Shell 脚本调用 claude 命令
+- 确保进程正确退出，关闭 readline 接口
+
+**数据提取优化**
+- 用户问题需要过滤短选项（如单字符 A/B/C）
+- 处理多种 content 格式（字符串和数组）
+- 从 `<command-args>` 标签中提取真正的用户问题
+
+### 4. Hook 机制经验
+
+**Hook 重复触发问题**
+- 当通过 `--plugin-dir` 引用组件时，组件内 `hooks/` 目录下的配置会与项目 `.claude/settings.json` 的 hooks 公用
+- 如果在两个地方都配置了相同的 hook，就会触发两次
+- 解决方案：避免重复配置，只在其中一个地方配置 hook
+
+**其他 Hook 注意事项**
+- SessionEnd hook 触发时机：`/clear` 命令也会触发
+- 通过 stdin 传递 session_id，而不是命令行参数
+
+### 5. 文档和代码组织
+
+- 设计文档先保存在 `docs/plans/` 目录
+- 实现计划使用 writing-plans skill 创建
+- 使用 git commit 记录每个任务完成状态
 
 ## 技能使用
 

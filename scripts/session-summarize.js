@@ -142,6 +142,22 @@ async function processSession(sessionId) {
 
   var parsed = await parseJsonl(jsonlPath);
 
+  // 检查是否有文件修改，如果没有则跳过 AI 分析
+  if (parsed.modifiedFiles.length === 0) {
+    console.log(JSON.stringify({
+      session_id: sessionId,
+      date: getBeijingTime(),
+      project: path.basename(process.cwd()),
+      history_dir: HISTORY_DIR,
+      skip_ai_analysis: true,
+      reason: 'no files modified',
+      user_questions: parsed.userQuestions,
+      llm_responses: parsed.llmResponses,
+      modified_files: []
+    }));
+    process.exit(0);
+  }
+
   // 输出完整数据到 stdout
   const data = {
     session_id: sessionId,

@@ -97,7 +97,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID}
 
 **执行：**
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js push <message>
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.sh push <message>
 ```
 
 ### /pull
@@ -112,7 +112,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js push <message>
 
 **执行：**
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js pull
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.sh pull
 ```
 
 ## 工作流程
