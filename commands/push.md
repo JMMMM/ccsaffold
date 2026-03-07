@@ -8,7 +8,7 @@ description: "加密会话记录并推送到云端。用法: /push [message]"
 请执行以下命令来加密并推送会话记录：
 
 ```bash
-node E:/ccsaffold/scripts/session-cloud.js push <message>
+node ${CLAUDE_PLUGIN_ROOT}/scripts/session-cloud.js push <message>
 ```
 
 ## 参数说明

@@ -1,45 +1,43 @@
 #!/usr/bin/env node
 /**
- * session-search.js - 搜索会话历史
+ * session-search.js - AI 智能搜索会话历史
  *
  * 用法:
- *   node session-search.js <keyword> [--top 5]
+ *   node session-search.js <query> [--top 5]
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const HISTORY_DIR = path.join(process.cwd(), '.session-history');
+const HISTORY_DIR = path.join(process.env.CLAUDE_PROJECT_ROOT || process.cwd(), '.session-history');
 
 // 解析参数
 const args = process.argv.slice(2);
 const topIndex = args.indexOf('--top');
 const top = topIndex !== -1 ? parseInt(args[topIndex + 1]) || 5 : 5;
-const keyword = args.find(arg => !arg.startsWith('--') && arg !== '--top' && args[args.indexOf(arg) - 1] !== '--top');
+const query = args.find(arg => !arg.startsWith('--') && arg !== '--top' && args[args.indexOf(arg) - 1] !== '--top');
 
-if (!keyword) {
-  console.log('session-search.js - 搜索会话历史');
+if (!query) {
+  console.log('session-search.js - AI 智能搜索会话历史');
   console.log('');
   console.log('用法:');
-  console.log('  node session-search.js <keyword> [--top 5]');
+  console.log('  node session-search.js <query> [--top 5]');
   console.log('');
   console.log('参数:');
-  console.log('  keyword   搜索关键词');
+  console.log('  query     搜索查询（自然语言）');
   console.log('  --top N   显示前 N 个结果（默认 5）');
   console.log('');
   console.log('示例:');
-  console.log('  node session-search.js hook --top 3');
-  console.log('  node session-search.js "git commit"');
+  console.log('  node session-search.js "修改了hooks配置"');
+  console.log('  node session-search.js hook --top 10');
   process.exit(1);
 }
 
 /**
  * 提取 YAML frontmatter
- * @param {string} content - 文件内容
- * @returns {Object|null} YAML 数据
  */
 function extractYaml(content) {
-  // 处理 Windows 换行符
   const normalizedContent = content.replace(/\r\n/g, '\n');
   const match = normalizedContent.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
@@ -47,17 +45,13 @@ function extractYaml(content) {
   const yamlText = match[1];
   const data = {};
 
-  // 简单解析 YAML（不引入依赖）
   const lines = yamlText.split('\n');
-  let currentKey = null;
   let currentArray = null;
 
   lines.forEach(line => {
-    // 检查是否是数组项（以 "  - " 开头）
     if (line.startsWith('  - ')) {
       if (currentArray) {
         const value = line.substring(4).trim();
-        // 移除引号
         if (value.startsWith('"') && value.endsWith('"')) {
           currentArray.push(value.slice(1, -1));
         } else {
@@ -67,40 +61,31 @@ function extractYaml(content) {
       return;
     }
 
-    // 处理键值对
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) return;
 
     const key = line.substring(0, colonIndex).trim();
     let value = line.substring(colonIndex + 1).trim();
 
-    // 解析内联数组
     if (value.startsWith('[')) {
       if (!value.endsWith(']')) {
-        // 简单处理：取第一行
         value = [value.substring(1).replace(/"/g, '').trim()];
       } else {
         value = value.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, ''));
       }
       data[key] = value;
-    }
-    // 解析字符串
-    else if (value.startsWith('"')) {
-      // 处理带引号的字符串
+      currentArray = null;
+    } else if (value.startsWith('"')) {
       if (value.endsWith('"')) {
         data[key] = value.slice(1, -1);
       } else {
         data[key] = value.slice(1);
       }
-    }
-    // 解析多行数组
-    else if (value === '') {
-      currentKey = key;
+      currentArray = null;
+    } else if (value === '') {
       currentArray = [];
       data[key] = currentArray;
-    }
-    // 普通值
-    else {
+    } else {
       data[key] = value;
       currentArray = null;
     }
@@ -110,115 +95,184 @@ function extractYaml(content) {
 }
 
 /**
- * 计算关键词匹配得分
- * @param {Object} yaml - YAML 数据
- * @param {string} keyword - 搜索关键词
- * @returns {number} 匹配得分
+ * 收集所有会话的 description
  */
-function calculateScore(yaml, keyword) {
-  const kw = keyword.toLowerCase();
-  let score = 0;
-
-  // 摘要匹配（权重最高）
-  if (yaml.summary && yaml.summary.toLowerCase().includes(kw)) {
-    score += 10;
-  }
-
-  // 关键词匹配
-  if (Array.isArray(yaml.keywords)) {
-    yaml.keywords.forEach(k => {
-      if (k.toLowerCase().includes(kw)) {
-        score += 5;
-      }
-    });
-  }
-
-  // 用户问题匹配
-  if (Array.isArray(yaml.user_questions)) {
-    yaml.user_questions.forEach(q => {
-      if (q.toLowerCase().includes(kw)) {
-        score += 3;
-      }
-    });
-  }
-
-  // 项目名匹配
-  if (yaml.project && yaml.project.toLowerCase().includes(kw)) {
-    score += 2;
-  }
-
-  return score;
-}
-
-/**
- * 搜索会话历史
- * @param {string} keyword - 搜索关键词
- * @param {number} top - 返回结果数量
- */
-function searchSessions(keyword, top) {
+function collectDescriptions() {
   if (!fs.existsSync(HISTORY_DIR)) {
-    console.log('没有找到会话历史目录');
-    console.log('');
-    console.log('提示: 会话历史目录位于 .session-history/');
-    return;
+    return [];
   }
 
   const files = fs.readdirSync(HISTORY_DIR)
     .filter(f => f.endsWith('.md'))
     .map(f => path.join(HISTORY_DIR, f));
 
-  if (files.length === 0) {
-    console.log('没有找到会话历史记录');
-    return;
-  }
-
-  const results = [];
+  const sessions = [];
 
   files.forEach(filePath => {
     const content = fs.readFileSync(filePath, 'utf-8');
     const yaml = extractYaml(content);
 
-    if (yaml) {
-      const score = calculateScore(yaml, keyword);
-      if (score > 0) {
-        results.push({
-          file: path.basename(filePath),
-          path: filePath,
-          score,
-          yaml
-        });
-      }
+    if (yaml && yaml.description) {
+      sessions.push({
+        file: path.basename(filePath),
+        path: filePath,
+        session_id: yaml.session_id || 'unknown',
+        date: yaml.date || 'unknown',
+        project: yaml.project || 'unknown',
+        description: yaml.description,
+        completion_status: yaml.completion_status || 'completed'
+      });
     }
   });
 
-  // 按得分排序，取 top
-  results.sort((a, b) => b.score - a.score);
-  const topResults = results.slice(0, top);
+  // 按日期排序（最新的在前）
+  sessions.sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateB - dateA;
+  });
 
-  if (topResults.length === 0) {
-    console.log(`未找到包含 "${keyword}" 的会话记录`);
+  return sessions;
+}
+
+/**
+ * 使用 AI 进行智能搜索
+ */
+function searchWithAI(query, sessions, top) {
+  // 构建提示词
+  const descriptionsList = sessions.map((s, i) =>
+    `[${i + 1}] [${s.session_id}] ${s.description}
+     Project: ${s.project}, Date: ${s.date}`
+  ).join('\n');
+
+  const prompt = `You are a search assistant. Given a user query and a list of session descriptions, find the most relevant sessions.
+
+## User Query
+${query}
+
+## Session Descriptions
+${descriptionsList}
+
+## Instructions
+1. Analyze the user query to understand what they are looking for
+2. Compare the query with each session description
+3. Return a JSON array of the top ${top} most relevant session numbers (1-indexed from the list above)
+4. Each result should include: index (1-based) and a brief reason why it matches
+
+Return JSON in this format:
+{"results": [{"index": 1, "reason": "brief explanation"}]}
+
+Return only valid JSON. Do not include any other text.`;
+
+  // 保存提示词到临时文件
+  const tmpFile = path.join(HISTORY_DIR, '.search-prompt-' + Date.now() + '.txt');
+  fs.writeFileSync(tmpFile, prompt, 'utf-8');
+
+  // 调用 claude 进行 AI 分析
+  const cmd = `claude -p --model GLM-4.5-Air --dangerously-skip-permissions --no-session-persistence --output-format json --tools "" --setting-sources user --disable-slash-commands @"${tmpFile}"`;
+
+  try {
+    const output = execSync(cmd, { encoding: 'utf-8', timeout: 60000 });
+    fs.unlinkSync(tmpFile);
+
+    // 解析结果
+    const result = JSON.parse(output);
+    if (result.results && Array.isArray(result.results)) {
+      return result.results.map(r => {
+        const idx = r.index - 1;
+        if (idx >= 0 && idx < sessions.length) {
+          return {
+            ...sessions[idx],
+            reason: r.reason
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+  } catch (e) {
+    console.error('AI search failed:', e.message);
+    try { fs.unlinkSync(tmpFile); } catch (err) {}
+    return [];
+  }
+
+  return [];
+}
+
+/**
+ * 简单关键词匹配得分
+ */
+function calculateSimpleScore(session, query) {
+  const words = query.toLowerCase().split(/\s+/);
+  let score = 0;
+  const desc = (session.description || '').toLowerCase();
+
+  words.forEach(word => {
+    if (word.length > 1 && desc.includes(word)) score += 1;
+  });
+
+  return score;
+}
+
+/**
+ * 显示结果
+ */
+function displayResults(results) {
+  console.log(`找到 ${results.length} 个匹配的会话:`);
+  console.log('');
+
+  results.forEach((result, index) => {
+    console.log(`--- 匹配 ${index + 1} ---`);
+    console.log(`会话ID: ${result.session_id}`);
+    console.log(`日期: ${result.date}`);
+    console.log(`项目: ${result.project}`);
+    console.log(`描述: ${result.description}`);
+    if (result.reason) {
+      console.log(`匹配原因: ${result.reason}`);
+    }
+    console.log(`文件: ${result.file}`);
     console.log('');
-    console.log('提示: 尝试使用其他关键词搜索');
+  });
+}
+
+/**
+ * 主函数
+ */
+function main() {
+  const sessions = collectDescriptions();
+
+  if (sessions.length === 0) {
+    console.log('没有找到会话历史记录');
+    console.log('');
+    console.log('提示: 会话历史目录位于 .session-history/');
     return;
   }
 
-  console.log(`找到 ${results.length} 个匹配，显示前 ${topResults.length} 个:\n`);
+  console.log(`正在搜索: "${query}"`);
+  console.log(`分析 ${sessions.length} 个会话记录...`);
+  console.log('');
 
-  topResults.forEach((result, index) => {
-    console.log(`--- 匹配 ${index + 1} (得分: ${result.score}) ---`);
-    console.log(`文件: ${result.file}`);
-    console.log(`会话ID: ${result.yaml.session_id || '未知'}`);
-    console.log(`日期: ${result.yaml.date || '未知'}`);
-    console.log(`摘要: ${result.yaml.summary || '无摘要'}`);
-    console.log(`关键词: ${Array.isArray(result.yaml.keywords) ? result.yaml.keywords.join(', ') : (result.yaml.keywords || '无')}`);
-    console.log('');
-  });
+  // 尝试使用 AI 搜索
+  const results = searchWithAI(query, sessions, top);
 
-  // 显示提示
-  console.log('---');
-  console.log('提示: 使用 "node session-load.js --headers-only" 查看完整列表');
-  console.log('      或直接打开 .session-history/ 目录查看详细内容');
+  if (results.length === 0) {
+    console.log('AI 搜索未返回结果，使用关键词匹配...');
+
+    // 使用简单关键词匹配作为后备方案
+    const fallbackResults = sessions.map((s, i) => {
+      const score = calculateSimpleScore(s, query);
+      return { ...s, score, index: i };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, top);
+
+    if (fallbackResults.length > 0) {
+      displayResults(fallbackResults);
+    } else {
+      console.log('未找到匹配的会话记录');
+      console.log('');
+      console.log('提示: 尝试使用其他关键词搜索');
+    }
+  } else {
+    displayResults(results);
+  }
 }
 
-// 执行搜索
-searchSessions(keyword, top);
+main();

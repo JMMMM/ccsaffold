@@ -101,9 +101,9 @@ transcript_path=$(echo "$input" | jq -r '.transcript_path // empty')
 used_percentage=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
 
 # Color based on percentage
-if [[ "$used_percentage" -lt 60 ]]; then
+if [[ "$used_percentage" -lt 55 ]]; then
     ctx_color='\033[32m'  # Green
-elif [[ "$used_percentage" -lt 80 ]]; then
+elif [[ "$used_percentage" -lt 70 ]]; then
     ctx_color='\033[33m'  # Yellow
 else
     ctx_color='\033[31m'  # Red

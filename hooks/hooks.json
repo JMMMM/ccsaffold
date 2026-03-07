@@ -4,16 +4,10 @@
       "matcher": "",
       "hooks": [{
         "type": "command",
-        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js ${SESSION_ID} &"
+        "command": "TRIGGER_SOURCE=project_hook bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-end-hook.sh ${SESSION_ID}"
       }]
     }],
     "SessionStart": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-summarize.js --process-pending"
-      }]
-    }, {
       "matcher": "",
       "hooks": [{
         "type": "command",

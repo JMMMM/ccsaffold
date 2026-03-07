@@ -79,29 +79,9 @@ async function getPassword() {
   });
 
   return new Promise((resolve) => {
-    // Windows 兼容：使用 stderr 避免密码显示
-    process.stderr.write('请输入加密密码: ');
-    process.stdin.setRawMode(true);
-    let password = '';
-
-    process.stdin.on('data', (char) => {
-      const c = char.toString('utf8');
-      switch (c) {
-        case '\n':
-        case '\r':
-        case '\u0004': // Ctrl+D
-          process.stdin.setRawMode(false);
-          rl.close();
-          process.stderr.write('\n');
-          resolve(password);
-          break;
-        case '\u0003': // Ctrl+C
-          process.exit();
-          break;
-        default:
-          password += c;
-          break;
-      }
+    rl.question('请输入加密密码: ', { hideEchoBack: true }, (password) => {
+      rl.close();
+      resolve(password);
     });
   });
 }

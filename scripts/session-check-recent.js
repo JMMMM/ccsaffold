@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 配置
-const HISTORY_DIR = path.join(process.cwd(), '.session-history');
+const HISTORY_DIR = path.join(process.env.CLAUDE_PROJECT_ROOT || process.cwd(), '.session-history');
 const DEFAULT_WINDOW_MINUTES = 5;
 
 // 解析命令行参数
